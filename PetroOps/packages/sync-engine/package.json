@@ -1,0 +1,10 @@
+{
+  "name": "@petroops/sync-engine",
+  "version": "1.0.0",
+  "description": "PetroOps client synchronization engine and replication logic",
+  "private": true,
+  "main": "index.ts",
+  "dependencies": {
+    "@petroops/shared-contracts": "workspace:*"
+  }
+}

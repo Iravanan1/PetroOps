@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PetroOps</string>
+    <string name="title_activity_main">PetroOps</string>
+    <string name="package_name">com.petroops.app</string>
+    <string name="custom_url_scheme">com.petroops.app</string>
+</resources>

@@ -1,0 +1,8 @@
+{
+  "name": "@petroops/automation-layer",
+  "version": "1.0.0",
+  "description": "PetroOps multi-vendor Forecourt Controller (FCC) automation drivers",
+  "private": true,
+  "main": "driver.interface.ts",
+  "dependencies": {}
+}

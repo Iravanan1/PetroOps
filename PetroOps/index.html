@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PetroOps</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#B45309" />
+  <!-- Premium Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    // Safe Fallback UI for startup crashes
+    window.addEventListener('error', function(event) {
+      console.error('Captured Renderer Error:', event.error || event.message);
+      const root = document.getElementById('root');
+      if (root) {
+        root.innerHTML = `
+          <div style="padding: 40px; font-family: -apple-system, BlinkMacSystemFont, monospace; background: #07090f; color: #ff6b6b; border: 2px dashed #ff3333; border-radius: 12px; margin: 20px; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h2 style="margin-top: 0; color: #ff3333; font-family: sans-serif; display: flex; align-items: center; gap: 10px;">
+              ⚠️ PetroOps Desktop Renderer Crash
+            </h2>
+            <p style="color: #e2e8f0; font-size: 14px;">A critical exception occurred during frontend initialization. The application was prevented from showing a blank screen.</p>
+            <div style="background: rgba(0,0,0,0.6); padding: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); color: #ff8585; font-size: 12px; line-height: 1.5; overflow-x: auto; margin-top: 15px;">
+              <strong>Error:</strong> ${event.message}<br/>
+              <strong>Source:</strong> ${event.filename}:${event.lineno}:${event.colno}
+            </div>
+            ${event.error && event.error.stack ? `
+              <pre style="background: rgba(0,0,0,0.8); padding: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); overflow-x: auto; color: #e2e8f0; font-size: 11px; max-height: 250px; margin-top: 15px; font-family: monospace;">${event.error.stack}</pre>
+            ` : ''}
+            <div style="margin-top: 25px; color: #a0aec0; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
+              <p style="margin: 4px 0;"><strong>Desktop Integration API:</strong> ${window.electronAPI ? '✅ Active (Preload loaded successfully)' : '❌ Inactive (Preload failed)'}</p>
+              <p style="margin: 4px 0;"><strong>Diagnostic Log Location:</strong> ~/Library/Application Support/PetroOps/logs/crash.log</p>
+              <p style="margin: 4px 0;"><strong>Local Time:</strong> ${new Date().toISOString()}</p>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Attempt to forward error details to Electron main process if preload bridge is alive
+      if (window.electronAPI && typeof window.electronAPI.reportRendererError === 'function') {
+        window.electronAPI.reportRendererError(event.message, event.error ? event.error.stack : '', 'HTML_Startup_Listener');
+      }
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('Captured Renderer Unhandled Rejection:', event.reason);
+      const root = document.getElementById('root');
+      if (root) {
+        root.innerHTML = `
+          <div style="padding: 40px; font-family: -apple-system, BlinkMacSystemFont, monospace; background: #07090f; color: #ff9f43; border: 2px dashed #ff9f43; border-radius: 12px; margin: 20px; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h2 style="margin-top: 0; color: #ff9f43; font-family: sans-serif; display: flex; align-items: center; gap: 10px;">
+              ⚠️ PetroOps Desktop Promise Rejection
+            </h2>
+            <p style="color: #e2e8f0; font-size: 14px;">An unhandled asynchronous exception was caught. Review detail bounds below.</p>
+            <div style="background: rgba(0,0,0,0.6); padding: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); color: #ffb86c; font-size: 12px; line-height: 1.5; overflow-x: auto; margin-top: 15px;">
+              <strong>Reason:</strong> ${event.reason}
+            </div>
+            ${event.reason && event.reason.stack ? `
+              <pre style="background: rgba(0,0,0,0.8); padding: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); overflow-x: auto; color: #e2e8f0; font-size: 11px; max-height: 250px; margin-top: 15px; font-family: monospace;">${event.reason.stack}</pre>
+            ` : ''}
+            <div style="margin-top: 25px; color: #a0aec0; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
+              <p style="margin: 4px 0;"><strong>Desktop Integration API:</strong> ${window.electronAPI ? '✅ Active' : '❌ Inactive'}</p>
+            </div>
+          </div>
+        `;
+      }
+      
+      if (window.electronAPI && typeof window.electronAPI.reportRendererError === 'function') {
+        window.electronAPI.reportRendererError(String(event.reason), event.reason ? event.reason.stack : '', 'HTML_Promise_Listener');
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        // navigator.serviceWorker.register('/sw.js')
+        //   .then(reg => console.log('ServiceWorker registration successful with scope: ', reg.scope))
+        //   .catch(err => console.warn('ServiceWorker registration failed: ', err));
+      });
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,34 @@
+# Stage 1: Build the NestJS app
+FROM node:20-alpine AS builder
+
+WORKDIR /usr/src/app
+
+# Copy lock files and root workspaces parameters
+COPY package*.json ./
+COPY tsconfig*.json ./
+
+# Copy apps/cloud-backend
+COPY apps/cloud-backend ./apps/cloud-backend
+
+# Install dependencies and build
+RUN npm ci
+WORKDIR /usr/src/app/apps/cloud-backend
+RUN npx prisma generate
+RUN npm run build
+
+# Stage 2: Production runtime environment
+FROM node:20-alpine AS runner
+
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/src/app/package*.json ./
+COPY --from=builder /usr/src/app/apps/cloud-backend/dist ./dist
+COPY --from=builder /usr/src/app/apps/cloud-backend/node_modules ./node_modules
+COPY --from=builder /usr/src/app/apps/cloud-backend/prisma ./prisma
+COPY --from=builder /usr/src/app/apps/cloud-backend/package.json ./package.json
+
+EXPOSE 3000
+
+ENV NODE_ENV=production
+
+CMD ["node", "dist/main.js"]

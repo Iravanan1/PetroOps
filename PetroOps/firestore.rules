@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Core Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isTenantUser(tenantId) {
+      return isAuthenticated() && 
+             request.auth.token.tenantId == tenantId;
+    }
+
+    function isAuditor() {
+      return isAuthenticated() && 
+             (request.auth.token.role == 'auditor' || 
+              request.auth.token.role == 'super_admin');
+    }
+
+    // Tenant Isolation & Ledger Immutability
+    match /ledgerTransactions/{transactionId} {
+      allow read: if isTenantUser(resource.data.tenantId);
+      
+      // Enforce tenant ID alignment on new entries
+      // Writes to locked periods evaluate to false unless matching an authorized auditor custom claim
+      allow create: if isTenantUser(request.resource.data.tenantId) && 
+                    (request.resource.data.periodLocked != true || isAuditor());
+      
+      // Block all update and delete calls on the /ledgerTransactions collection
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Shift registers uploads
+    match /shiftRegisters/{registerId} {
+      allow read: if isTenantUser(resource.data.tenantId);
+      allow create: if isTenantUser(request.resource.data.tenantId) && (request.resource.data.periodLocked != true || isAuditor());
+      allow update: if isTenantUser(resource.data.tenantId) && (resource.data.periodLocked != true || isAuditor());
+      allow delete: if false;
+    }
+
+    // Wet stock inventory level records
+    match /wetstockReadings/{readingId} {
+      allow read: if isTenantUser(resource.data.tenantId);
+      allow create: if isTenantUser(request.resource.data.tenantId) && (request.resource.data.periodLocked != true || isAuditor());
+      allow update: if isTenantUser(resource.data.tenantId) && (request.resource.data.periodLocked != true || isAuditor());
+      allow delete: if false;
+    }
+
+    // Corporate Audit logs (Restricted to append-only)
+    match /auditLogs/{logId} {
+      allow read: if isTenantUser(resource.data.tenantId) || isAuditor();
+      allow create: if isAuthenticated() && request.resource.data.tenantId == request.auth.token.tenantId;
+      allow update, delete: if false; // Audit trails are fully append-only and immutable
+    }
+
+    // Station Profile details
+    match /stations/{stationId} {
+      allow read: if isTenantUser(resource.data.tenantId);
+      allow write: if isAuditor();
+    }
+  }
+}

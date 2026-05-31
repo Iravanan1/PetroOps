@@ -1,0 +1,185 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id           String        @id @default(uuid())
+  name         String
+  legalName    String?
+  gstin        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  stations     FuelStation[]
+  users        User[]
+  ledgers      LedgerBook[]
+}
+
+model User {
+  id           String        @id @default(uuid())
+  tenantId     String
+  email        String        @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         String        @default("FORECOURT_ATTENDANT") // e.g., "SYSTEM_ADMIN", "TENANT_OWNER", "STATION_MANAGER", "SHIFT_SUPERVISOR", "FORECOURT_ATTENDANT", "AUDITOR"
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shifts       Shift[]       @relation("Supervisor")
+  auditLogs    AuditLog[]
+}
+
+model FuelStation {
+  id           String        @id @default(uuid())
+  tenantId     String
+  name         String
+  location     String
+  timezone     String        @default("UTC")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tanks        Tank[]
+  pumps        Pump[]
+  shifts       Shift[]
+  inventories  Inventory[]
+  syncLogs     SyncSession[]
+}
+
+model Tank {
+  id             String        @id @default(uuid())
+  stationId      String
+  code           String        // e.g., "T1", "T2"
+  fuelType       String        // e.g., "Octane-95", "Diesel"
+  capacityLiters Float
+  currentLevel   Float         @default(0.0)
+  waterLevel     Float         @default(0.0)
+  temperature    Float         @default(25.0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  station        FuelStation   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  nozzles        Nozzle[]
+  dipReadings    DipReading[]
+}
+
+model Pump {
+  id           String        @id @default(uuid())
+  stationId    String
+  name         String        // e.g., "Dispenser 01"
+  model        String?       // e.g., "Gilbarco Advantage"
+  protocol     String        // e.g., "Gilbarco-2wire", "Orpak-FCC"
+  connectionUrl String       // e.g., "tcp://192.168.1.50:9001"
+  isActive     Boolean       @default(true)
+  station      FuelStation   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  nozzles      Nozzle[]
+}
+
+model Nozzle {
+  id             String        @id @default(uuid())
+  pumpId         String
+  tankId         String
+  nozzleNumber   Int           // e.g., 1, 2
+  totalizerLiters Float        @default(0.0)
+  totalizerCash   Float        @default(0.0)
+  isActive       Boolean       @default(true)
+  pump           Pump          @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+  tank           Tank          @relation(fields: [tankId], references: [id], onDelete: Cascade)
+  sales          Sale[]
+}
+
+model Shift {
+  id             String        @id @default(uuid())
+  stationId      String
+  supervisorId   String
+  shiftName      String        // e.g., "Morning A", "Night B"
+  startTime      DateTime
+  endTime        DateTime?
+  isClosed       Boolean       @default(false)
+  reconcileState String        @default("UNRECONCILED") // "BALANCED", "VARIANCE_WARNING", "CRITICAL_DISCREPANCY", "UNRECONCILED"
+  cashExpected   Float         @default(0.0)
+  cashCollected  Float         @default(0.0)
+  variance       Float         @default(0.0)
+  reconciledAt   DateTime?
+  station        FuelStation   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  supervisor     User          @relation("Supervisor", fields: [supervisorId], references: [id])
+  sales          Sale[]
+  ledgers        LedgerBook[]
+}
+
+model Sale {
+  id             String        @id @default(uuid())
+  shiftId        String
+  nozzleId       String
+  litersSold     Float
+  pricePerLiter  Float
+  amount         Float
+  paymentMethod  String        // "CASH", "UPI", "CREDIT_CARD", "FLEET_CARD"
+  startTotalizer Float
+  endTotalizer   Float
+  timestamp      DateTime      @default(now())
+  shift          Shift         @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  nozzle         Nozzle        @relation(fields: [nozzleId], references: [id])
+}
+
+model DipReading {
+  id             String        @id @default(uuid())
+  tankId         String
+  readingType    String        // "MANUAL", "AUTOMATIC"
+  fuelLevelMm    Float
+  waterLevelMm   Float
+  litersCalculated Float
+  timestamp      DateTime      @default(now())
+  tank           Tank          @relation(fields: [tankId], references: [id], onDelete: Cascade)
+}
+
+model Inventory {
+  id             String        @id @default(uuid())
+  stationId      String
+  itemCode       String        @unique // e.g., "MOBIL_1_5W30"
+  description    String
+  unitPrice      Float
+  quantityInStock Int          @default(0)
+  reorderLevel   Int           @default(5)
+  station        FuelStation   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+}
+
+model LedgerBook {
+  id             String        @id @default(uuid())
+  tenantId       String
+  shiftId        String?
+  sequenceNo     Int           @default(0) // SQLite autoincrement can be custom mapped
+  timestamp      DateTime      @default(now())
+  description    String
+  accountDebit   String
+  accountCredit  String
+  amount         Float
+  runningHash    String        // Verification chain hash
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shift          Shift?        @relation(fields: [shiftId], references: [id])
+}
+
+model SyncSession {
+  id             String        @id @default(uuid())
+  stationId      String
+  clientId       String        // App ID of local station office
+  lastSyncTime   DateTime
+  syncStatus     String        @default("COMPLETED") // "PENDING", "COMPLETED", "CONFLICTED", "FAILED"
+  errorMessage   String?
+  station        FuelStation   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  userId         String
+  action         String
+  resource       String
+  ipAddress      String?
+  payload        String?       // JSON payloads stored as string in SQLite
+  timestamp      DateTime      @default(now())
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

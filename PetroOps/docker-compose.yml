@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  pumpai-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pumpai-authority-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - REDIS_URL=redis://redis-cache:6379
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY}
+    depends_on:
+      - redis-cache
+    networks:
+      - pumpai-secure-network
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: pumpai-redis-cache
+    restart: always
+    command: redis-server --requirepass "${REDIS_PASSWORD:-pumpaiSecurePassword2026}"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pumpai-secure-network
+
+networks:
+  pumpai-secure-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local

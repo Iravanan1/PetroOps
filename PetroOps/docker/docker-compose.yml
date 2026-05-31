@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: petroops_db
+    restart: always
+    environment:
+      POSTGRES_USER: petroops_admin
+      POSTGRES_PASSWORD: SecureDbPassword2026!
+      POSTGRES_DB: petroops_prod
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U petroops_admin -d petroops_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: petroops_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cloud-backend:
+    build:
+      context: ../
+      dockerfile: Dockerfile.backend
+    container_name: petroops_api
+    restart: always
+    environment:
+      DATABASE_URL: "postgresql://petroops_admin:SecureDbPassword2026!@postgres:5432/petroops_prod?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      PORT: 3000
+      NODE_ENV: production
+      ALLOWED_ORIGINS: "*"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

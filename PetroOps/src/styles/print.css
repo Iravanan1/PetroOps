@@ -1,0 +1,115 @@
+/**
+ * print.css
+ * Printing layout stylesheet optimized for:
+ * 1. 80mm station thermal receipts (roll paper)
+ * 2. Standard A4 ledger balances sheets
+ */
+
+@media print {
+  /* Common printing overrides */
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Hide screen-only interactive panels, navigation, status bars, and buttons */
+  header, footer, nav, button, select, input, .no-print, [role="button"], .fixed, .absolute {
+    display: none !important;
+  }
+
+  /* 80mm Thermal Receipt styling (e.g. for shift closing, credit receipt) */
+  .thermal-receipt {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .thermal-receipt h1, 
+  .thermal-receipt h2, 
+  .thermal-receipt h3 {
+    text-align: center !important;
+    margin: 1.5mm 0 !important;
+    text-transform: uppercase !important;
+  }
+
+  .thermal-receipt table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 2mm 0 !important;
+  }
+
+  .thermal-receipt th, 
+  .thermal-receipt td {
+    padding: 0.8mm 0 !important;
+    text-align: left !important;
+    border-bottom: 1px dashed #000000 !important;
+  }
+
+  .thermal-receipt td.right,
+  .thermal-receipt th.right {
+    text-align: right !important;
+  }
+
+  .thermal-receipt .divider {
+    border-top: 1px dashed #000000 !important;
+    margin: 2mm 0 !important;
+    height: 0 !important;
+  }
+
+  .thermal-receipt .total-row {
+    font-weight: bold !important;
+    font-size: 10pt !important;
+  }
+
+  /* Standard A4 Ledger Balance styling */
+  .a4-ledger {
+    width: 100% !important;
+    margin: 10mm auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    font-family: 'Arial', sans-serif !important;
+    font-size: 10pt !important;
+  }
+
+  .a4-ledger table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 5mm 0 !important;
+  }
+
+  .a4-ledger th {
+    background-color: #E5E7EB !important;
+    border: 1px solid #9CA3AF !important;
+    padding: 2mm !important;
+    font-weight: bold !important;
+  }
+
+  .a4-ledger td {
+    border: 1px solid #D1D5DB !important;
+    padding: 2mm !important;
+  }
+
+  .a4-ledger tr.header-row {
+    background-color: #F3F4F6 !important;
+  }
+
+  .a4-ledger tr.total-row {
+    font-weight: bold !important;
+    background-color: #E5E7EB !important;
+  }
+
+  /* Force page breaks cleanly */
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+}
